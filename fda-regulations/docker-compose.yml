@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # Unified FDA Compliance Pipeline
+  fda-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fda-pipeline
+    ports:
+      - "8000:8000"
+    environment:
+      # Point to ollama running on host machine
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - VECTOR_DB_PATH=/app/data/vector_db
+    volumes:
+      # Mount vector DB (needs write access for ChromaDB metadata)
+      - ./data/vector_db:/app/data/vector_db
+    extra_hosts:
+      # Enable host.docker.internal on Linux
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
