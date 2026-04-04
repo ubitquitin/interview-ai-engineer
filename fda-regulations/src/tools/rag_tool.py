@@ -12,9 +12,13 @@ vector_db = Chroma(persist_directory=vector_db_path, embedding_function=embeddin
 @tool
 def search_fda_precedents(query: str):
     """
-    Searches the 2026 FDA Warning Letter database for atomic deficiencies
+    Searches the FDA Warning Letter database for atomic deficiencies
     matching the provided query. Returns the top 3 most relevant matches
     including Regulation, Violation, Description, and Evidence.
+
+    Args:
+        query: A plain text search string, e.g. 
+               '21 CFR 211 cleaning validation sterile manufacturing'
     """
     results = vector_db.similarity_search(query, k=3)
     return [r.page_content for r in results]
