@@ -9,7 +9,7 @@ embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6
 vector_db_path = os.getenv("VECTOR_DB_PATH", "/app/data/vector_db")
 vector_db = Chroma(persist_directory=vector_db_path, embedding_function=embeddings)
 
-@tool
+# @tool - For now keep as a simple function call, but this can be expanded to a full LangChain tool with structured outputs if needed.
 def search_fda_precedents(query: str):
     """
     Searches the FDA Warning Letter database for atomic deficiencies
