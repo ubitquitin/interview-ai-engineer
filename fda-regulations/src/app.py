@@ -7,7 +7,6 @@ import time
 import logging
 from fastapi import FastAPI, HTTPException
 from langgraph.graph import StateGraph, END
-from langgraph.graph.graph import CompiledGraph
 from typing import TypedDict, Any, Type
 from pydantic import BaseModel
 
@@ -142,7 +141,7 @@ async def compliance_node(state: PipelineState) -> dict[str, dict[str, Any]]:
     result = await run_compliance_agent(structured_input)
     return {"compliance": result.dict()}
 
-def build_graph() -> CompiledGraph:
+def build_graph() -> StateGraph[PipelineState]:
     """
     Constructs the LangGraph pipeline workflow.
 

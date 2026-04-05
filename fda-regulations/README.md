@@ -33,6 +33,8 @@ fda-regulations/
 
 ## Quick Start
 
+Do the following from the fda-regulations directory...
+
 ### 1. Install & Run Ollama with llama3.2:3b
 
 **macOS:**
