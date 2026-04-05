@@ -1,6 +1,6 @@
 """
 Unified FastAPI application that runs all agents and the pipeline orchestrator.
-Single-service, multi-agent pipeline using LangGraph + tool binding (no AgentExecutor).
+Single-service, multi-agent pipeline using LangGraph + tool binding.
 """
 import os
 import time
@@ -11,7 +11,6 @@ from typing import TypedDict, Any, Type
 from pydantic import BaseModel
 
 from langchain_ollama import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tracers.stdout import ConsoleCallbackHandler
 from langchain_core.runnables import RunnableConfig
 
@@ -32,21 +31,20 @@ app = FastAPI(
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
 
-# Added num_thread and request_timeout to help stabilize performance
+# The LLM Base for agents. Replace with your actual model and config as needed.
 llm = ChatOllama(
     model="llama3.2:3b",
     temperature=0,
     base_url=OLLAMA_BASE_URL,
-    num_thread=8 # Adjust based on your CPU cores
+    num_thread=8
 )
 
-# Shared config for visibility
+# Using ConsoleCallbackHandler to log all LLM interactions to the console for debugging and observability.
 config = RunnableConfig(callbacks=[ConsoleCallbackHandler()])
 
 # ----------------------------------------------------------------------------
 # AGENT HELPERS (RETRY LOGIC)
 # ----------------------------------------------------------------------------
-
 def get_structured_llm_with_retry(schema: Type[BaseModel]) -> Any:
     """
     Creates a structured LLM with a retry policy for schema validation errors.
@@ -65,9 +63,12 @@ def get_structured_llm_with_retry(schema: Type[BaseModel]) -> Any:
 # ----------------------------------------------------------------------------
 # AGENT LOGIC
 # ----------------------------------------------------------------------------
-
 @app.post("/agent/structuring", response_model=ExtractionOutput)
 async def run_structuring_agent(request: InputRequest):
+    '''
+    Agent that takes raw input text and extracts structured information about entities, systems, controls, processes, and materials relevant to GMP compliance.
+    Implements retry logic for schema validation errors to enhance robustness.
+    '''
     start_time = time.time()
     logger.info("Starting Structuring Agent...")
     
@@ -87,6 +88,10 @@ async def run_structuring_agent(request: InputRequest):
 
 @app.post("/agent/compliance", response_model=ComplianceOutput)
 async def run_compliance_agent(structured_input: ExtractionOutput):
+    '''
+    Agent that takes structured information about a GMP process and assesses compliance risks and potential FDA citations.
+    Integrates a RAG tool to retrieve relevant FDA precedents based on the structured input, and uses this information to inform the compliance assessment.
+    '''
     start_time = time.time()
     logger.info("Starting Compliance Agent...")
     
@@ -125,21 +130,34 @@ async def run_compliance_agent(structured_input: ExtractionOutput):
 # ----------------------------------------------------------------------------
 # PIPELINE ORCHESTRATOR
 # ----------------------------------------------------------------------------
-
 class PipelineState(TypedDict):
+    '''
+    This class keeps track of data flowing through the Agentic pipeline.
+    Includes the input, the structured output from the structuring agent, 
+    and the compliance assessment from the compliance agent.
+    '''
     input: str
     structured: dict[str, Any]  # ExtractionOutput serialized to dict
     compliance: dict[str, Any]  # ComplianceOutput serialized to dict
 
+
 async def structuring_node(state: PipelineState) -> dict[str, dict[str, Any]]:
+    '''
+    Node that runs the structuring agent and updates the pipeline state with the structured output.
+    '''
     request = InputRequest(input_text=state["input"])
     result = await run_structuring_agent(request)
     return {"structured": result.dict()}
 
+
 async def compliance_node(state: PipelineState) -> dict[str, dict[str, Any]]:
+    '''
+    Node that runs the compliance agent and updates the pipeline state with the compliance assessment.
+    '''
     structured_input = ExtractionOutput(**state["structured"])
     result = await run_compliance_agent(structured_input)
     return {"compliance": result.dict()}
+
 
 def build_graph() -> StateGraph[PipelineState]:
     """
@@ -156,6 +174,8 @@ def build_graph() -> StateGraph[PipelineState]:
     workflow.add_edge("compliance", END)
     return workflow.compile()
 
+# Builds the langgraph once at startup to avoid overhead on each request. 
+# The graph is stateless and can be reused across requests.
 graph = build_graph()
 
 @app.post("/pipeline")
@@ -169,7 +189,6 @@ async def full_pipeline(request: InputRequest):
 # ----------------------------------------------------------------------------
 # HEALTH + ROOT
 # ----------------------------------------------------------------------------
-
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {

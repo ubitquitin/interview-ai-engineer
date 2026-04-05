@@ -12,6 +12,9 @@ from langchain_core.documents import Document
 
 from src.models import WarningLetterDocument, WarningLetterMetadata
 
+'''
+Logging
+'''
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -21,7 +24,9 @@ logger = logging.getLogger(__name__)
 
 @staticmethod
 def inline_refs(schema: dict) -> dict:
-    """Helper function to resolve all $ref/$defs into a flat schema."""
+    """Helper function to resolve all $ref/$defs into a flat schema.
+    This was necessary to use nested structured outputs with Ollama.
+    """
     defs = schema.pop("$defs", {})
 
     def resolve(obj):
@@ -38,6 +43,10 @@ def inline_refs(schema: dict) -> dict:
 
 
 def pre_filter_pharma(input_file, output_file):
+    '''
+    Pre-filters the raw FDA warning letter data to focus on the "Big Three" centers most relevant to pharma and medical device manufacturing: CDER, CDRH, and CBER.
+    This step reduces noise and ensures the schematizer focuses on letters most likely to contain relevant defieiciences.
+    '''
     # The official "Big Three" Life Science Centers
     allowed_offices = {
         "Center for Drug Evaluation and Research (CDER)",
@@ -64,6 +73,11 @@ def pre_filter_pharma(input_file, output_file):
 
 
 class LocalSchematizer:
+    '''
+    LocalSchematizer is responsible for converting raw FDA warning letter text into structured JSON format.
+    It uses a local LLM instance (e.g., Ollama) with a defined schema to extract relevant information about deficiencies, metadata, and other key components of the letter.
+    This structured output is essential for downstream analysis by the Compliance Agent and for populating the Vector DB with deficiency records.
+    '''
     def __init__(self, model_name: str = "llama3"):
         # 1. Initialize the base LLM
         self.llm = ChatOllama(
@@ -108,6 +122,10 @@ class LocalSchematizer:
 
 
 async def run_schematization(input_file, output_file):
+    '''
+    Runs the schematization process in parallel across multiple letters using asyncio.
+    Each letter is processed by the LocalSchematizer to extract structured data.
+    Results are written to the output file as they complete.'''
     schematizer = LocalSchematizer()
     semaphore = asyncio.BoundedSemaphore(4)
 
@@ -184,8 +202,11 @@ def clean_dupes(input_path, output_path):
 
 
 def hydrate_vector_db(input_path: str):
-    logger.info("Initializing Atomic Deficiency Hydration...")
-    # FastEmbed uses ONNX Runtime - much lighter than PyTorch
+    '''
+    Takes the final cleaned schematized letters and hydrates the Vector DB with atomic deficiency records.
+    Each deficiency becomes its own document with metadata linking back to the original letter.
+    '''
+    logger.info("Initializing Deficiency Populating of Vector DB...")
     embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
     docs = []
@@ -234,7 +255,7 @@ def hydrate_vector_db(input_path: str):
         persist_directory="data/vector_db"
     )
 
-    logger.info(f"Hydrated {len(docs)} atomic deficiencies into the Vector DB.")
+    logger.info(f"Hydrated {len(docs)} deficiencies into the Vector DB.")
 
 
 if __name__ == "__main__":
@@ -243,11 +264,15 @@ if __name__ == "__main__":
     output_file = "data/warning_letters_schematized.jsonl"
     final_file = "data/warning_letters_final.jsonl"
 
-    # pre_filter_pharma(input_file, interim_file)
+    # Step 1: Pre-filter raw data to focus on relevant FDA centers
+    pre_filter_pharma(input_file, interim_file)
 
-    # asyncio.run(run_schematization(interim_file, output_file))
+    # Step 2: Convert the filtered raw letters into structured JSON format using the LocalSchematizer
+    asyncio.run(run_schematization(interim_file, output_file))
 
+    # Step 3: Clean duplicates at both the letter and deficiency level to ensure a high-quality dataset for the RAG tool
     clean_dupes(output_file, final_file)
 
+    # Step 4: Hydrate the Vector DB with deficiency records for retrieval by the Compliance Agent
     hydrate_vector_db(final_file)
 

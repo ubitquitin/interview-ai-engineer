@@ -9,7 +9,11 @@ import re
 Parsing Data Structures
 '''
 class Deficiency(BaseModel):
-    """A specific regulatory failure cited by the FDA."""
+    """
+    A specific regulatory failure cited by the FDA.
+    This is the core unit of comparison for the compliance agent. 
+    A given letter may contain many Defiencies.
+    """
     title: str = Field(description="The bolded header/violation name")
     cfr_reference: str = Field(description="The cfr reference number like '21 CFR 211.68'")
     description: str = Field(description="The factual narrative of the failure")
@@ -18,7 +22,7 @@ class Deficiency(BaseModel):
 
 
 class WarningLetterMetadata(BaseModel):
-    """The 'Index' level data for tracking and filtering."""
+    """Represents an Index/metadata for an FDA Warning Letter."""
     company_name: str
     issue_date: str
     url: HttpUrl
@@ -28,7 +32,7 @@ class WarningLetterMetadata(BaseModel):
 
 
 class WarningLetterDocument(BaseModel):
-    """The 'Gold' layer: Fully schematized regulatory intelligence."""
+    """Represents an FDA warning letter with structured metadata and content."""
     metadata: WarningLetterMetadata
     introduction: str
     deficiencies: List[Deficiency]
@@ -40,13 +44,18 @@ class WarningLetterDocument(BaseModel):
 Agent Data Structures
 '''
 class InputRequest(BaseModel):
+    '''
+    Input request for the structuring agent/pipeline. 
+    Contains the raw text to be processed.
+    '''
     input_text: str
+    
+    #TODO: Add in guardrails as functions to filter out malicious input text.
 
 
 class ProcessEntity(BaseModel):
     """
     A normalized unit of context extracted from raw input.
-
     Entities should reflect components an FDA inspector would evaluate.
     """
     name: str = Field(
