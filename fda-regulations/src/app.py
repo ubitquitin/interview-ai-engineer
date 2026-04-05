@@ -7,7 +7,9 @@ import time
 import logging
 from fastapi import FastAPI, HTTPException
 from langgraph.graph import StateGraph, END
-from typing import TypedDict
+from langgraph.graph.graph import CompiledGraph
+from typing import TypedDict, Any, Type
+from pydantic import BaseModel
 
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
@@ -46,8 +48,16 @@ config = RunnableConfig(callbacks=[ConsoleCallbackHandler()])
 # AGENT HELPERS (RETRY LOGIC)
 # ----------------------------------------------------------------------------
 
-def get_structured_llm_with_retry(schema):
-    """Creates a structured LLM with a retry policy for schema validation errors."""
+def get_structured_llm_with_retry(schema: Type[BaseModel]) -> Any:
+    """
+    Creates a structured LLM with a retry policy for schema validation errors.
+
+    Args:
+        schema: Pydantic model class for structured output validation.
+
+    Returns:
+        Configured LLM chain with retry logic and structured output parsing.
+    """
     return llm.with_structured_output(schema).with_retry(
         stop_after_attempt=3,
         wait_exponential_jitter=True
@@ -119,20 +129,26 @@ async def run_compliance_agent(structured_input: ExtractionOutput):
 
 class PipelineState(TypedDict):
     input: str
-    structured: dict
-    compliance: dict
+    structured: dict[str, Any]  # ExtractionOutput serialized to dict
+    compliance: dict[str, Any]  # ComplianceOutput serialized to dict
 
-async def structuring_node(state: PipelineState):
+async def structuring_node(state: PipelineState) -> dict[str, dict[str, Any]]:
     request = InputRequest(input_text=state["input"])
     result = await run_structuring_agent(request)
     return {"structured": result.dict()}
 
-async def compliance_node(state: PipelineState):
+async def compliance_node(state: PipelineState) -> dict[str, dict[str, Any]]:
     structured_input = ExtractionOutput(**state["structured"])
     result = await run_compliance_agent(structured_input)
     return {"compliance": result.dict()}
 
-def build_graph():
+def build_graph() -> CompiledGraph:
+    """
+    Constructs the LangGraph pipeline workflow.
+
+    Returns:
+        Compiled graph with structuring -> compliance nodes.
+    """
     workflow = StateGraph(PipelineState)
     workflow.add_node("structuring", structuring_node)
     workflow.add_node("compliance", compliance_node)
@@ -156,7 +172,7 @@ async def full_pipeline(request: InputRequest):
 # ----------------------------------------------------------------------------
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {
         "status": "healthy",
         "service": "fda-compliance-pipeline",
@@ -165,7 +181,7 @@ async def health():
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str | dict[str, str]]:
     return {
         "service": "FDA Compliance Pipeline",
         "version": "1.0.0",

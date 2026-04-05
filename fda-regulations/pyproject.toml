@@ -17,6 +17,8 @@ dependencies = [
     "pandas>=3.0.2",
     "plotly>=6.6.0",
     "pydantic>=2.12.5",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
     "requests>=2.33.1",
     "seaborn>=0.13.2",
     "selectolax>=0.4.7",
@@ -29,3 +31,30 @@ dependencies = [
 # This prevents uv from trying to find a project named 'fda-regulations'
 # inside the folder, keeping the build simple.
 managed = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/data/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
