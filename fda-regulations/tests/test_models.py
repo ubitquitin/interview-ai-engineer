@@ -22,7 +22,12 @@ class TestDeficiency:
     """Test suite for Deficiency model."""
 
     def test_valid_deficiency(self):
-        """Test creation of valid deficiency."""
+        """Test creation of valid deficiency.
+
+        Verifies:
+            - All required fields are accepted
+            - Field values are properly assigned
+        """
         deficiency = Deficiency(
             title="Inadequate Cleaning Validation",
             cfr_reference="21 CFR 211.67",
@@ -34,7 +39,12 @@ class TestDeficiency:
         assert deficiency.cfr_reference == "21 CFR 211.67"
 
     def test_missing_required_fields(self):
-        """Test that missing required fields raise ValidationError."""
+        """Test that missing required fields raise ValidationError.
+
+        Verifies:
+            - ValidationError raised when required fields are missing
+            - Pydantic validation is enforced
+        """
         with pytest.raises(ValidationError):
             Deficiency(title="Test", cfr_reference="21 CFR 211.67")
 
@@ -43,7 +53,12 @@ class TestProcessEntity:
     """Test suite for ProcessEntity model."""
 
     def test_valid_process_entity(self):
-        """Test creation of valid process entity."""
+        """Test creation of valid process entity.
+
+        Verifies:
+            - All entity fields properly initialized
+            - Type and name fields stored correctly
+        """
         entity = ProcessEntity(
             name="Batch Record System",
             type="system",
@@ -53,7 +68,12 @@ class TestProcessEntity:
         assert entity.type == "system"
 
     def test_entity_types(self):
-        """Test various entity types are accepted."""
+        """Test various entity types are accepted.
+
+        Verifies:
+            - All standard entity types (process, system, material, control) are valid
+            - Type field correctly stores provided value
+        """
         types = ["process", "system", "material", "control"]
         for entity_type in types:
             entity = ProcessEntity(
@@ -68,7 +88,13 @@ class TestExtractionOutput:
     """Test suite for ExtractionOutput model."""
 
     def test_valid_extraction_output(self):
-        """Test creation of valid extraction output with nested entities."""
+        """Test creation of valid extraction output with nested entities.
+
+        Verifies:
+            - Complex nested structure properly initialized
+            - All list fields contain expected items
+            - Nested entity objects accessible
+        """
         output = ExtractionOutput(
             summary="Manufacturing process with quality controls",
             entities=[
@@ -88,7 +114,12 @@ class TestExtractionOutput:
         assert "LIMS" in output.systems
 
     def test_empty_lists_allowed(self):
-        """Test that empty lists are valid."""
+        """Test that empty lists are valid.
+
+        Verifies:
+            - Empty lists accepted for all collection fields
+            - Model handles minimal data gracefully
+        """
         output = ExtractionOutput(
             summary="Minimal process",
             entities=[],
@@ -105,14 +136,24 @@ class TestRiskLevel:
     """Test suite for RiskLevel enum."""
 
     def test_risk_level_values(self):
-        """Test all risk level enum values."""
+        """Test all risk level enum values.
+
+        Verifies:
+            - All four risk levels (HIGH, MEDIUM, LOW, NONE) properly defined
+            - Enum values match expected strings
+        """
         assert RiskLevel.HIGH.value == "HIGH"
         assert RiskLevel.MEDIUM.value == "MEDIUM"
         assert RiskLevel.LOW.value == "LOW"
         assert RiskLevel.NONE.value == "NONE"
 
     def test_risk_level_comparison(self):
-        """Test risk levels can be compared."""
+        """Test risk levels can be compared.
+
+        Verifies:
+            - Enum equality comparison works correctly
+            - Different risk levels are distinguishable
+        """
         assert RiskLevel.HIGH == RiskLevel.HIGH
         assert RiskLevel.HIGH != RiskLevel.LOW
 
@@ -121,7 +162,13 @@ class TestComplianceOutput:
     """Test suite for ComplianceOutput model."""
 
     def test_valid_compliance_output(self):
-        """Test creation of valid compliance output."""
+        """Test creation of valid compliance output.
+
+        Verifies:
+            - Full compliance assessment structure properly created
+            - Nested RiskItem and Deficiency objects accessible
+            - All risk and summary fields populated correctly
+        """
         deficiency = Deficiency(
             title="Data Integrity Issue",
             cfr_reference="21 CFR 211.194",
@@ -147,7 +194,13 @@ class TestComplianceOutput:
         assert output.risks[0].deficiency.title == "Data Integrity Issue"
 
     def test_no_risks_identified(self):
-        """Test compliance output with no risks."""
+        """Test compliance output with no risks.
+
+        Verifies:
+            - Empty risk list accepted
+            - NONE risk level properly set
+            - Model handles zero-risk scenario
+        """
         output = ComplianceOutput(
             risks=[],
             overall_risk=RiskLevel.NONE,
@@ -161,7 +214,13 @@ class TestWarningLetterMetadata:
     """Test suite for WarningLetterMetadata model."""
 
     def test_valid_metadata(self):
-        """Test creation of valid warning letter metadata."""
+        """Test creation of valid warning letter metadata.
+
+        Verifies:
+            - All metadata fields properly initialized
+            - URL validation works correctly
+            - Optional fields accepted
+        """
         metadata = WarningLetterMetadata(
             company_name="Test Pharma Inc.",
             issue_date="2024-01-15",
@@ -173,7 +232,12 @@ class TestWarningLetterMetadata:
         assert "fda.gov" in str(metadata.url)
 
     def test_optional_fields(self):
-        """Test that optional fields can be omitted."""
+        """Test that optional fields can be omitted.
+
+        Verifies:
+            - Optional fields (subject, ref_number) can be None
+            - Model instantiation succeeds without optional fields
+        """
         metadata = WarningLetterMetadata(
             company_name="Test Company",
             issue_date="2024-01-01",

@@ -68,6 +68,16 @@ async def run_structuring_agent(request: InputRequest):
     '''
     Agent that takes raw input text and extracts structured information about entities, systems, controls, processes, and materials relevant to GMP compliance.
     Implements retry logic for schema validation errors to enhance robustness.
+
+    Args:
+        request (InputRequest): Request object containing raw input text to be structured
+
+    Returns:
+        ExtractionOutput: Structured output containing summary, entities, processes, materials,
+                         systems, and controls extracted from the input text
+
+    Raises:
+        HTTPException: 500 status code if structuring fails after retries
     '''
     start_time = time.time()
     logger.info("Starting Structuring Agent...")
@@ -91,6 +101,17 @@ async def run_compliance_agent(structured_input: ExtractionOutput):
     '''
     Agent that takes structured information about a GMP process and assesses compliance risks and potential FDA citations.
     Integrates a RAG tool to retrieve relevant FDA precedents based on the structured input, and uses this information to inform the compliance assessment.
+
+    Args:
+        structured_input (ExtractionOutput): Structured process information containing entities,
+                                            systems, controls, processes, and materials
+
+    Returns:
+        ComplianceOutput: Compliance assessment containing identified risks, overall risk level,
+                         and executive summary of compliance posture
+
+    Raises:
+        HTTPException: 500 status code if compliance assessment fails after retries
     '''
     start_time = time.time()
     logger.info("Starting Compliance Agent...")
@@ -144,6 +165,13 @@ class PipelineState(TypedDict):
 async def structuring_node(state: PipelineState) -> dict[str, dict[str, Any]]:
     '''
     Node that runs the structuring agent and updates the pipeline state with the structured output.
+
+    Args:
+        state (PipelineState): Current pipeline state containing input text
+
+    Returns:
+        dict[str, dict[str, Any]]: Dictionary with "structured" key containing the ExtractionOutput
+                                   as a dictionary for state update
     '''
     request = InputRequest(input_text=state["input"])
     result = await run_structuring_agent(request)
@@ -153,6 +181,13 @@ async def structuring_node(state: PipelineState) -> dict[str, dict[str, Any]]:
 async def compliance_node(state: PipelineState) -> dict[str, dict[str, Any]]:
     '''
     Node that runs the compliance agent and updates the pipeline state with the compliance assessment.
+
+    Args:
+        state (PipelineState): Current pipeline state containing structured process information
+
+    Returns:
+        dict[str, dict[str, Any]]: Dictionary with "compliance" key containing the ComplianceOutput
+                                   as a dictionary for state update
     '''
     structured_input = ExtractionOutput(**state["structured"])
     result = await run_compliance_agent(structured_input)
@@ -180,6 +215,16 @@ graph = build_graph()
 
 @app.post("/pipeline")
 async def full_pipeline(request: InputRequest):
+    """Executes the complete FDA compliance pipeline from raw text to compliance assessment.
+
+    Orchestrates the full workflow through structuring and compliance nodes using LangGraph.
+
+    Args:
+        request (InputRequest): Request object containing raw input text describing a GMP process
+
+    Returns:
+        dict: Pipeline result containing input, structured output, and compliance assessment
+    """
     logger.info("--- PIPELINE START ---")
     inputs = {"input": request.input_text}
     result = await graph.ainvoke(inputs)
@@ -191,6 +236,14 @@ async def full_pipeline(request: InputRequest):
 # ----------------------------------------------------------------------------
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """Health check endpoint for service monitoring.
+
+    Args:
+        None
+
+    Returns:
+        dict[str, str]: Service health status and configuration information
+    """
     return {
         "status": "healthy",
         "service": "fda-compliance-pipeline",
@@ -200,6 +253,14 @@ async def health() -> dict[str, str]:
 
 @app.get("/")
 async def root() -> dict[str, str | dict[str, str]]:
+    """Root endpoint providing service information and available endpoints.
+
+    Args:
+        None
+
+    Returns:
+        dict[str, str | dict[str, str]]: Service metadata and endpoint documentation
+    """
     return {
         "service": "FDA Compliance Pipeline",
         "version": "1.0.0",

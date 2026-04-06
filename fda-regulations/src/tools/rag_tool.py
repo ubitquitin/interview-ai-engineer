@@ -16,11 +16,14 @@ def search_fda_precedents(query: str, k: int = 3) -> List[str]:
     including Regulation, Violation, Description, and Evidence.
 
     Args:
-        query: A plain text search string, e.g.
-               '21 CFR 211 cleaning validation sterile manufacturing'
+        query (str): A plain text search string describing compliance concerns or regulatory topics,
+                     e.g., '21 CFR 211 cleaning validation sterile manufacturing'
+        k (int, optional): Number of top matches to return. Defaults to 3.
 
     Returns:
-        List of up to 3 matching deficiency descriptions as strings.
+        List[str]: List of up to k matching deficiency descriptions as formatted strings,
+                   each containing CFR reference, violation title, description, evidence,
+                   and required action from historical FDA warning letters
     """
     results = vector_db.similarity_search(query, k)
     return [r.page_content for r in results]

@@ -18,7 +18,14 @@ with patch('langchain_community.vectorstores.Chroma', MagicMock()):
 
 
 class MockDocument:
-    """Mock LangChain Document object."""
+    """Mock LangChain Document object.
+
+    Args:
+        page_content (str): The document content text
+
+    Attributes:
+        page_content (str): The document content accessible as an attribute
+    """
     def __init__(self, page_content: str):
         self.page_content = page_content
 
@@ -28,7 +35,16 @@ class TestSearchFDAPrecedents:
 
     @patch('src.tools.rag_tool.vector_db')
     def test_search_returns_top_results(self, mock_vector_db):
-        """Test that search returns top 3 results."""
+        """Test that search returns top 3 results.
+
+        Args:
+            mock_vector_db: Mocked Chroma vector database instance
+
+        Verifies:
+            - Returns exactly 3 results
+            - Content matches expected deficiencies
+            - Correct parameters passed to similarity_search
+        """
         # Mock similarity search response
         mock_docs = [
             MockDocument("Deficiency 1: Cleaning validation failure per 21 CFR 211.67"),
@@ -49,7 +65,15 @@ class TestSearchFDAPrecedents:
 
     @patch('src.tools.rag_tool.vector_db')
     def test_search_with_empty_query(self, mock_vector_db):
-        """Test search with empty query string."""
+        """Test search with empty query string.
+
+        Args:
+            mock_vector_db: Mocked Chroma vector database instance
+
+        Verifies:
+            - Empty results returned for empty query
+            - Function handles empty string gracefully
+        """
         mock_vector_db.similarity_search.return_value = []
 
         results = search_fda_precedents("")
@@ -59,7 +83,15 @@ class TestSearchFDAPrecedents:
 
     @patch('src.tools.rag_tool.vector_db')
     def test_search_with_cfr_reference(self, mock_vector_db):
-        """Test search with CFR reference number."""
+        """Test search with CFR reference number.
+
+        Args:
+            mock_vector_db: Mocked Chroma vector database instance
+
+        Verifies:
+            - CFR references are properly searchable
+            - Returned content includes specified CFR regulation
+        """
         mock_docs = [
             MockDocument("21 CFR 211.194 - Laboratory records must include complete data"),
         ]
@@ -73,7 +105,15 @@ class TestSearchFDAPrecedents:
 
     @patch('src.tools.rag_tool.vector_db')
     def test_search_extracts_page_content(self, mock_vector_db):
-        """Test that only page_content is extracted from documents."""
+        """Test that only page_content is extracted from documents.
+
+        Args:
+            mock_vector_db: Mocked Chroma vector database instance
+
+        Verifies:
+            - Results are strings, not Document objects
+            - Only page_content field is extracted
+        """
         mock_docs = [
             MockDocument("Content 1"),
             MockDocument("Content 2"),
@@ -88,7 +128,15 @@ class TestSearchFDAPrecedents:
 
     @patch('src.tools.rag_tool.vector_db')
     def test_search_handles_complex_query(self, mock_vector_db):
-        """Test search with multi-term complex query."""
+        """Test search with multi-term complex query.
+
+        Args:
+            mock_vector_db: Mocked Chroma vector database instance
+
+        Verifies:
+            - Complex multi-term queries are handled correctly
+            - Query string passed without modification
+        """
         mock_docs = [
             MockDocument("Sterile manufacturing cleaning validation deficiency"),
         ]

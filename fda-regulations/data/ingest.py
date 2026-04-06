@@ -23,6 +23,16 @@ class FDAIngestor:
         self.semaphore = asyncio.Semaphore(3) # Rate limiting prevention
 
     async def get_all_metadata(self, client: httpx.AsyncClient, total_to_fetch: int = 100) -> List[WarningLetterMetadata]:
+        """Fetches metadata for FDA warning letters from the FDA's AJAX endpoint.
+
+        Args:
+            client (httpx.AsyncClient): Async HTTP client for making requests
+            total_to_fetch (int, optional): Maximum number of letters to fetch. Defaults to 100.
+
+        Returns:
+            List[WarningLetterMetadata]: List of warning letter metadata objects containing
+                                        company name, issue date, URL, issuing office, and subject
+        """
         all_meta = []
         start = 0
         page_size = 50
@@ -84,7 +94,16 @@ class FDAIngestor:
 
 
     async def fetch_full_text(self, client: httpx.AsyncClient, meta: WarningLetterMetadata) -> Optional[str]:
-        """Fetches text with exponential backoff to bypass rate limits."""
+        """Fetches text with exponential backoff to bypass rate limits.
+
+        Args:
+            client (httpx.AsyncClient): Async HTTP client for making requests
+            meta (WarningLetterMetadata): Metadata object containing the URL to fetch
+
+        Returns:
+            Optional[str]: Extracted text content from the warning letter page,
+                          or None if fetching fails after retries
+        """
         max_retries = 3
         backoff_base = 5  # Start with a 5s wait on failure
 
@@ -119,6 +138,19 @@ class FDAIngestor:
 
 
 async def main():
+    """Main orchestration function for FDA warning letter ingestion.
+
+    Coordinates the complete ingestion pipeline:
+    1. Fetches metadata for all warning letters
+    2. Retrieves full text content for each letter
+    3. Persists data to JSONL file
+
+    Args:
+        None
+
+    Returns:
+        None: Writes ingested data to warning_letters_raw.jsonl file
+    """
     ingestor = FDAIngestor()
     async with httpx.AsyncClient(follow_redirects=True) as client:
         # 1. Metadata Collection (Breadth)

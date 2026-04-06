@@ -26,6 +26,12 @@ logger = logging.getLogger(__name__)
 def inline_refs(schema: dict) -> dict:
     """Helper function to resolve all $ref/$defs into a flat schema.
     This was necessary to use nested structured outputs with Ollama.
+
+    Args:
+        schema (dict): JSON schema dictionary containing $ref and $defs keys
+
+    Returns:
+        dict: Flattened schema with all references resolved inline
     """
     defs = schema.pop("$defs", {})
 
@@ -46,6 +52,13 @@ def pre_filter_pharma(input_file, output_file):
     '''
     Pre-filters the raw FDA warning letter data to focus on the "Big Three" centers most relevant to pharma and medical device manufacturing: CDER, CDRH, and CBER.
     This step reduces noise and ensures the schematizer focuses on letters most likely to contain relevant defieiciences.
+
+    Args:
+        input_file (str): Path to input JSONL file containing raw warning letters
+        output_file (str): Path to output JSONL file for filtered warning letters
+
+    Returns:
+        None: Writes filtered records to output_file and prints summary statistics
     '''
     # The official "Big Three" Life Science Centers
     allowed_offices = {
@@ -98,7 +111,16 @@ class LocalSchematizer:
         self.structured_llm = self.llm.with_structured_output(flat_schema, method="json_schema")
 
     async def process_letter(self, raw_content: str, metadata_dict: dict) -> Optional[WarningLetterDocument]:
-        """Extracts structured data directly into a Pydantic object."""
+        """Extracts structured data directly into a Pydantic object.
+
+        Args:
+            raw_content (str): Raw text content of the warning letter
+            metadata_dict (dict): Dictionary containing letter metadata (company, date, URL, etc.)
+
+        Returns:
+            Optional[WarningLetterDocument]: Structured warning letter document with extracted deficiencies,
+                                            or None if extraction fails
+        """
         try:
             prompt = (
                 "You are an FDA Specialist. Extract the following Warning Letter text into "
@@ -125,7 +147,15 @@ async def run_schematization(input_file, output_file):
     '''
     Runs the schematization process in parallel across multiple letters using asyncio.
     Each letter is processed by the LocalSchematizer to extract structured data.
-    Results are written to the output file as they complete.'''
+    Results are written to the output file as they complete.
+
+    Args:
+        input_file (str): Path to input JSONL file containing filtered warning letters
+        output_file (str): Path to output JSONL file for schematized warning letters
+
+    Returns:
+        None: Writes schematized records to output_file as they complete
+    '''
     schematizer = LocalSchematizer()
     semaphore = asyncio.BoundedSemaphore(4)
 
@@ -159,6 +189,15 @@ async def run_schematization(input_file, output_file):
 
 
 def clean_dupes(input_path, output_path):
+    """Removes duplicate warning letters and deficiencies from schematized data.
+
+    Args:
+        input_path (str): Path to input JSONL file containing schematized warning letters
+        output_path (str): Path to output JSONL file for deduplicated warning letters
+
+    Returns:
+        None: Writes deduplicated records to output_path and prints summary statistics
+    """
     seen_content_hashes = set()
     seen_urls = set()
     duplicate_urls = []
@@ -205,6 +244,12 @@ def hydrate_vector_db(input_path: str):
     '''
     Takes the final cleaned schematized letters and hydrates the Vector DB with atomic deficiency records.
     Each deficiency becomes its own document with metadata linking back to the original letter.
+
+    Args:
+        input_path (str): Path to JSONL file containing cleaned, deduplicated warning letters
+
+    Returns:
+        None: Creates and persists a Chroma vector database in data/vector_db directory
     '''
     logger.info("Initializing Deficiency Populating of Vector DB...")
     embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")

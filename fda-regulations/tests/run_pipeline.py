@@ -20,9 +20,31 @@ DEFAULT_INPUT = (
 )
 
 def print_header(title: str):
+    """Prints a formatted section header for output organization.
+
+    Args:
+        title (str): Section title to display
+
+    Returns:
+        None: Prints formatted header to stdout
+    """
     print(f"\n{'='*20} {title} {'='*20}")
 
 def run_pipeline_test(input_text: str):
+    """Executes a full end-to-end test of the FDA compliance pipeline.
+
+    Sends input text to the pipeline API, receives structured and compliance outputs,
+    and prints formatted results including risks, deficiencies, and regulatory citations.
+
+    Args:
+        input_text (str): Raw description of a manufacturing process or system to evaluate
+
+    Returns:
+        None: Prints test results to stdout and exits on failure
+
+    Raises:
+        SystemExit: Exits with code 1 if API request fails
+    """
     print(f"Testing FDA Compliance Pipeline...")
     print(f"Target URL: {API_URL}")
     print(f"\nInput Text: {input_text[:100]}...")

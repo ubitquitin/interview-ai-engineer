@@ -9,6 +9,18 @@ import plotly.express as px
 
 # 1. Data Acquisition & Engineering
 def load_and_process(file_path):
+    """Loads and processes raw FDA warning letter data for analysis.
+
+    Performs data cleaning, feature engineering, and datetime parsing to prepare
+    data for downstream analysis and visualization.
+
+    Args:
+        file_path (str): Path to JSONL file containing raw warning letter data
+
+    Returns:
+        pd.DataFrame: Processed DataFrame with cleaned metadata, engineered features
+                     (letter_length, word_count, violation_count, year), and structured columns
+    """
     data = []
     with open(file_path, 'r') as f:
         for line in f:
@@ -37,6 +49,15 @@ def load_and_process(file_path):
     return pd.DataFrame(data)
 
 def get_main_department(office_name):
+    """Normalizes and categorizes FDA issuing office names into main departments.
+
+    Args:
+        office_name (str): Raw issuing office name from warning letter metadata
+
+    Returns:
+        str: Standardized department name (e.g., "Center for Drug Evaluation and Research")
+             or "Uncategorized" if office name is empty/unknown
+    """
     # Standardize to title case and remove extra spaces
     name = office_name.strip()
 
